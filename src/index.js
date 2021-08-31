@@ -4,12 +4,16 @@ const readlineSync = require('readline-sync');
 const variables = {
     // username: 'dogdarebs@gmail.com',
     // password: 'ArthurRARC2',
-    username: 'arthurrangel427@gmail.com',
-    password: 'ArthurRARC1',
+    // username: 'arthurrangel427@gmail.com',
+    // password: 'ArthurRARC1',
+    errorFolder: './errors/',
+    errorCount: 0,
+    username: 'vitin_36@hotmail.com',
+    password: 'Vitor102030',
     date: '2021-08-31 10:00:00',
-    presetDate: '2021-08-31 09:52:00',
+    presetDate: '2021-08-31 09:52:30',
     preset: 'https://www.nike.com.br/tenis-nike-air-vapormax-2021-flyknit-masculino-153-169-223-324914',
-    product: 'https://www.nike.com.br/nike-flow-2020-ispa-153-169-211-350772',
+    product: 'https://www.nike.com.br/nike-zoomx-vaporfly-next-x-gyakusou-263-508-511-221968',
     // product: 'https://www.nike.com.br/nike-zoomx-vaporfly-next-x-gyakusou-263-508-511-221971',
     phoneNumber: '34992291965',
     login: {
@@ -59,6 +63,14 @@ const variables = {
         confirmarPagamento: 'button#confirmar-pagamento'
     }
 }
+
+const treatError = async (error, page) => {
+    console.log(error)
+    await page.screenshot(`${variables.errorFolder}error-${variables.errorCount}.png`)
+    variables.errorCount += 1
+    throw Error()
+}
+
 const timeTo = (date) => {
     const now = new Date()
     const nextTime = new Date(date)
@@ -90,7 +102,9 @@ const schedule = async (date, executionType) => {
 
 const alwaysRetry = async (func, param) => {
     let success = false
+    console.log('trying to executing func ', func)
     while (!success) {
+        console.log('executing func ', func)
         try {
             const result = await func(param)
             success = true
@@ -108,7 +122,7 @@ const exec = async () => {
         browser = await puppeteer.launch({
             headless: false,
             defaultViewport: null,
-            args: ['--disable-notifications', '--start-maximized']
+            args: ['--no-sandbox', '--disable-notifications', '--start-maximized']
         })
     } catch (error) {
         console.log('erro ao instanciar browser e pagina')
@@ -150,8 +164,8 @@ const login = async (browser) => {
 
         await page.waitForSelector(variables.login.homePage, { timeout: 10000 })
     }
-    catch {
-        throw Error('erro ao realizar login')
+    catch (e) {
+        await treatError(e, page)
     }
     finally {
         await page.close()
@@ -176,8 +190,8 @@ const productPreset = async (browser) => {
         })
 
     }
-    catch {
-        throw Error('Erro ao selecionar produto do carrinho')
+    catch (e) {
+        await treatError(e, page)
     }
     finally {
         await page.close()
@@ -214,6 +228,8 @@ const cartPreset = async (browser) => {
 
     }
     catch {
+        await page.screenshot(`${variables.errorFolder}error-${variables.errorCount}.png`)
+        variables.errorCount += 1
         page.close()
         throw Error('Erro ao setar carrinho')
     }
@@ -234,8 +250,8 @@ const clearCart = async (browser) => {
             return request.url().includes("/Carrinho/Excluir") && request.ok() ? true : false
         })
     }
-    catch {
-        throw Error('Erro ao limpar carrinho')
+    catch (e) {
+        await treatError(e, page)
     }
     finally {
         page.close()

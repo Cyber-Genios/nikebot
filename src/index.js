@@ -126,6 +126,7 @@ const exec = async () => {
         })
     } catch (error) {
         console.log('erro ao instanciar browser e pagina')
+        console.log(error)
         return
     }
 

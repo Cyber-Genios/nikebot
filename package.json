@@ -1,0 +1,13 @@
+{
+  "name": "nikebot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "puppeteer": "^10.2.0",
+    "readline-sync": "^1.4.10"
+  }
+}

@@ -1,12 +1,13 @@
 const puppeteer = require('puppeteer')
 const readlineSync = require('readline-sync');
+const fs = require('fs-extra')
 
 const variables = {
     // username: 'dogdarebs@gmail.com',
     // password: 'ArthurRARC2',
     // username: 'arthurrangel427@gmail.com',
     // password: 'ArthurRARC1',
-    errorFolder: './errors/',
+    errorFolder: './errors',
     errorCount: 0,
     username: 'vitin_36@hotmail.com',
     password: 'Vitor102030',
@@ -66,7 +67,8 @@ const variables = {
 
 const treatError = async (error, page) => {
     console.log(error)
-    await page.screenshot(`${variables.errorFolder}error-${variables.errorCount}.png`)
+    await fs.ensureDirSync(variables.errorFolder)
+    await page.screenshot({ path: `${variables.errorFolder}/error-${variables.errorCount}.png` })
     variables.errorCount += 1
     throw Error()
 }

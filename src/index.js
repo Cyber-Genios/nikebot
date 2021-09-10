@@ -2,12 +2,12 @@ const puppeter = require('puppeteer')
 const axios = require('axios').default
 
 const executionParams = {
-    username: 'vitin_36@hotmail.com',
-    password: 'Vitor102030',
-    date: '2021-09-09 10:00:00',
-    presetDate: '2021-09-09 09:31:00',
+    username: 'arthurdarebs@gmail.com',
+    password: 'ArthurRARC12',
+    date: '2021-09-10 10:00:00',
+    presetDate: '2021-09-10 09:53:00',
     preset: 'https://www.nike.com.br/tenis-nike-air-vapormax-2021-flyknit-masculino-153-169-223-324914',
-    product: 'https://www.nike.com.br/nike-zoomx-vaporfly-next-x-gyakusou-263-508-511-221968',
+    product: 'https://www.nike.com.br/air-force-1-07-lv8-emb-153-169-211-339053',
     phoneNumber: '34992291965',
     waitForSelector: {
         visible: true,

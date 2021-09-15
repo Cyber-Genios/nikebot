@@ -1,11 +1,16 @@
 const puppeter = require('puppeteer')
 const axios = require('axios').default
+const readlineSync = require('readline-sync')
 
 const executionParams = {
-    username: 'arthurdarebs@gmail.com',
-    password: 'ArthurRARC12',
-    date: '2021-09-10 10:00:00',
-    presetDate: '2021-09-10 09:53:00',
+    username: 'dogdarebs@gmail.com',
+    password: 'ArthurRARC2',
+    // username: 'arthurdarebs@gmail.com',
+    // password: 'ArthurRARC12',
+    // username: 'vitin_36@hotmail.com',
+    // password: 'Vitor102030',
+    date: '2021-09-13 10:00:00',
+    presetDate: '2021-09-13 09:53:00',
     preset: 'https://www.nike.com.br/tenis-nike-air-vapormax-2021-flyknit-masculino-153-169-223-324914',
     product: 'https://www.nike.com.br/air-force-1-07-lv8-emb-153-169-211-339053',
     phoneNumber: '34992291965',
@@ -167,7 +172,7 @@ const getProductInfo = async ({ cookie, url }) => {
     return data
 }
 
-const cartAdd = async ({ cookie, productId, referer }) => {
+const cartAdd = async ({ cookie, productId, referer, twoFactorId }) => {
     const headers = {
         cookie,
         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
@@ -181,11 +186,66 @@ const cartAdd = async ({ cookie, productId, referer }) => {
         data: dataRequest,
         headers
     })
+
+    if (!data.success && data.twoFactorAuth) {
+        await executeOrLog(twoFactorGenerate, { cookie, referer, productId: twoFactorId })
+        const code = await readlineSync.question("Codigo de autenticação: \n", {
+            limit: (input) => input.length === 6,
+            limitMessage: 'Codigo de autenticação deve ter 6 caracteres'
+        })
+        await executeOrLog(twoFactorConfirm, { cookie, referer, productId: twoFactorId, code })
+
+    }
+
     if (!data || !data.success) {
         console.log('Failed cartAdd response: ', data)
         throw Error(`Failed to cartAdd for ${referer}`)
     }
+
     return data
+}
+const twoFactorGenerate = async ({ cookie, referer, productId }) => {
+    const headers = {
+        cookie,
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        origin: 'https://www.nike.com.br',
+        referer
+    }
+    const dataRequest = `CelularCliente=${executionParams.phoneNumber}&ProdutoId=${productId}`
+    const { data } = await axios({
+        method: 'post',
+        url: 'https://www.nike.com.br/auth/two-factor/generate',
+        headers,
+        data: dataRequest
+    })
+
+    if (!data || !data.valid) {
+        console.log('Failed to generate two factor code: ', data)
+    }
+
+    return
+}
+
+const twoFactorConfirm = async ({ cookie, referer, productId, code }) => {
+    const headers = {
+        cookie,
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        origin: 'https://www.nike.com.br',
+        referer
+    }
+    const dataRequest = `NumberCode=${code}&ProdutoId=${productId}`
+    const { data } = await axios({
+        method: 'post',
+        url: 'https://www.nike.com.br/auth/two-factor/validate',
+        headers,
+        data: dataRequest
+    })
+
+    if (!data || !data.valid) {
+        console.log('Failed to generate two factor code: ', data)
+    }
+
+    return
 }
 
 const calculateDelivery = async ({ cookie, cep }) => {
@@ -303,6 +363,16 @@ const getProductId = async ({ data, tamanho }) => {
     return codigoProduto
 }
 
+const getProductTwoFactorId = async ({ data, tamanho }) => {
+    const productDetails = JSON.parse(data.DetalheProduto).variacoesProduto
+    const inputRegex = `<input type="radio" class="tamanho__item_pdp js-tamanho__item_pdp" data-tamanho="${tamanho}"(.*?)(.*?)>`
+    const linkProdutoRegex = `value="(.*?)"`
+    const [inputRegexResult] = productDetails.match(inputRegex)
+    const [codigoProdutoRegexResult, value] = inputRegexResult.match(linkProdutoRegex)
+    const productId = value.split('-').pop()
+    return productId
+}
+
 const bot = async () => {
 
     //login and cookies
@@ -340,15 +410,17 @@ const bot = async () => {
     //product infos
     await schedule(executionParams.date, 'Product Info')
     const getProductInfoFn = async () => await executeOrLog(getProductInfo, { cookie, url: executionParams.product })
-    const productResponse = await infineRetry(getProductInfoFn)
+    const productResponse = await infineRetry(getProductInfoFn, {}, 15000)
     const productId = await executeOrLog(getProductId, { data: productResponse, tamanho: 40 })
-    const cartAddFn = async () => await executeOrLog(cartAdd, { cookie, referer: executionParams.product, productId: productId })
-    const productCartAddResponse = await infineRetry(cartAddFn)
+    const twoFactorProductId = await executeOrLog(getProductTwoFactorId, { data: productResponse, tamanho: 40 })
+    const cartAddFn = async () => await executeOrLog(cartAdd, { cookie, referer: executionParams.product, productId: productId, twoFactorId: twoFactorProductId })
+    const productCartAddResponse = await infineRetry(cartAddFn, {}, 15000)
+    console.log(productCartAddResponse)
 
     // bough product
 
-    const buyProductFn = async () => await executeOrLog(buyProduct, { cookie, cardInformations, deliveryInformations })
-    const buyResult = await infineRetry(buyProductFn, {}, 15000)
+    // const buyProductFn = async () => await executeOrLog(buyProduct, { cookie, cardInformations, deliveryInformations })
+    // const buyResult = await infineRetry(buyProductFn, {}, 15000)
     return
 }
 

@@ -419,8 +419,8 @@ const bot = async () => {
 
     // bough product
 
-    // const buyProductFn = async () => await executeOrLog(buyProduct, { cookie, cardInformations, deliveryInformations })
-    // const buyResult = await infineRetry(buyProductFn, {}, 15000)
+    const buyProductFn = async () => await executeOrLog(buyProduct, { cookie, cardInformations, deliveryInformations })
+    const buyResult = await infineRetry(buyProductFn, {}, 15000)
     return
 }
 

@@ -3,16 +3,18 @@ const axios = require('axios').default
 const readlineSync = require('readline-sync')
 
 const executionParams = {
-    username: 'dogdarebs@gmail.com',
-    password: 'ArthurRARC2',
+    // username: 'arthurrangel427@gmail.com',
+    // password: 'ArthurRARC1',
     // username: 'arthurdarebs@gmail.com',
     // password: 'ArthurRARC12',
-    // username: 'vitin_36@hotmail.com',
-    // password: 'Vitor102030',
-    date: '2021-09-13 10:00:00',
-    presetDate: '2021-09-13 09:53:00',
+    // username: 'dogdarebs@gmail.com',
+    // password: 'ArthurRARC2',
+    // username: 'pedromwg@gmail.com',
+    // password: 'PedroMWG1',
+    date: '2021-09-16 10:00:00',
+    presetDate: '2021-09-16 09:53:00',
     preset: 'https://www.nike.com.br/tenis-nike-air-vapormax-2021-flyknit-masculino-153-169-223-324914',
-    product: 'https://www.nike.com.br/air-force-1-07-lv8-emb-153-169-211-339053',
+    product: 'https://www.nike.com.br/ldwaffle-x-sacai-x-clot-153-169-211-350263',
     phoneNumber: '34992291965',
     waitForSelector: {
         visible: true,
@@ -410,17 +412,17 @@ const bot = async () => {
     //product infos
     await schedule(executionParams.date, 'Product Info')
     const getProductInfoFn = async () => await executeOrLog(getProductInfo, { cookie, url: executionParams.product })
-    const productResponse = await infineRetry(getProductInfoFn, {}, 15000)
+    const productResponse = await infineRetry(getProductInfoFn, {}, 5000)
     const productId = await executeOrLog(getProductId, { data: productResponse, tamanho: 40 })
     const twoFactorProductId = await executeOrLog(getProductTwoFactorId, { data: productResponse, tamanho: 40 })
     const cartAddFn = async () => await executeOrLog(cartAdd, { cookie, referer: executionParams.product, productId: productId, twoFactorId: twoFactorProductId })
-    const productCartAddResponse = await infineRetry(cartAddFn, {}, 15000)
+    const productCartAddResponse = await infineRetry(cartAddFn, {}, 5000)
     console.log(productCartAddResponse)
 
     // bough product
 
     const buyProductFn = async () => await executeOrLog(buyProduct, { cookie, cardInformations, deliveryInformations })
-    const buyResult = await infineRetry(buyProductFn, {}, 15000)
+    const buyResult = await infineRetry(buyProductFn, {}, 5000)
     return
 }
 

@@ -13,8 +13,10 @@ const executionParams = {
     // password: 'PedroMWG1',
     date: '2021-09-16 10:00:00',
     presetDate: '2021-09-16 09:53:00',
-    preset: 'https://www.nike.com.br/tenis-nike-air-vapormax-2021-flyknit-masculino-153-169-223-324914',
-    product: 'https://www.nike.com.br/ldwaffle-x-sacai-x-clot-153-169-211-350263',
+    preset: 'https://www.nike.com.br/tenis-nike-pegasus-trail-3-masculino-153-169-224-324706?gridPosition=G1',
+    product: 'https://www.nike.com.br/dunk-high-x-fragment-design-67-80-445-331128',
+    presetNumber: 38,
+    productNumber: 28,
     phoneNumber: '34992291965',
     waitForSelector: {
         visible: true,
@@ -98,25 +100,29 @@ const initBrowser = async () => {
 
 const login = async (browser) => {
     const params = {
-        loginPage: 'https://www.nike.com.br',
+        loginPage: 'https://www.nike.com/pt/login?continueUrl=https://www.nike.com/pt/member/settings/communication-preferences',
         loginPageButton: "#anchor-acessar-unite-oauth2",
         loginEmail: 'input[name=emailAddress]',
         loginPassword: 'input[name=password]',
-        loginButton: 'input[value="ENTRAR"]',
+        loginButton: 'input[value="INICIAR SESSÃO"]',
         homePage: 'main#home'
     }
     const loginFlow = async (page) => {
-        await page.goto(params.loginPage)
-        await page.waitForSelector(params.loginPageButton, executionParams.waitForSelector)
-        await page.click(params.loginPageButton)
 
-        await page.waitForSelector(params.loginEmail, executionParams.waitForSelector)
-        await page.waitForSelector(params.loginPassword, executionParams.waitForSelector)
-        await page.waitForSelector(params.loginButton, executionParams.waitForSelector)
+        await page.waitForTimeout(120000)
+        await page.goto(params.loginPage)
+        // await page.waitForSelector(params.loginPageButton, executionParams.waitForSelector)
+        // await page.click(params.loginPageButton)
+
+        await page.waitForSelector(params.loginEmail, 30000)
+        await page.waitForSelector(params.loginPassword, 30000)
+        await page.waitForSelector(params.loginButton, 30000)
 
         await page.$eval(params.loginEmail, (el, param) => el.value = param, executionParams.username)
         await page.$eval(params.loginPassword, (el, param) => el.value = param, executionParams.password)
         await page.click(params.loginButton)
+
+        await page.waitForTimeout(100000)
 
         await page.waitForResponse(response => {
             return response.url().includes('/login') && response.ok() ? true : false
@@ -135,27 +141,32 @@ const login = async (browser) => {
     return await executeOrLog(loginFlow, page, async () => { await page.close() })
 }
 
-const getDeliveryInformations = async (browser) => {
-    const params = {
+const getDeliveryInformations = async ({ cookie }) => {
+    const headers = {
+        cookie,
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        origin: 'https://www.nike.com.br',
+    }
+    const { data } = await axios({
+        method: 'post',
         url: 'https://www.nike.com.br/checkout',
-        deliveryAddressInput: '#calcularFreteCallback',
-        deliveryIdInput: '#user-shipping-address-id'
-    }
-    const deliveryFlow = async (page) => {
-        await page.goto(params.url)
-        await page.waitForSelector(params.deliveryAddressInput, executionParams.waitForSelectorInvisible)
-        await page.waitForSelector(params.deliveryIdInput, executionParams.waitForSelectorInvisible)
-        const getInputValue = (input) => input.getAttribute('value')
-        const deliveryAddress = await page.$eval(params.deliveryAddressInput, getInputValue)
-        const deliveryId = await page.$eval(params.deliveryIdInput, getInputValue)
-        return {
-            id: deliveryId,
-            address: deliveryAddress
-        }
-    }
+        headers,
+    })
+    const inputCepRegex = `<input type="hidden" id="calcularFreteCallback"(.*?)>`
+    const valorCepRegex = `value="(.*?)"`
+    const [inputCepRegexResult] = data.match(inputCepRegex)
+    const [ignore, deliveryAddress] = inputCepRegexResult.match(valorCepRegex)
 
-    const page = await browser.newPage()
-    return await executeOrLog(deliveryFlow, page, async () => { await page.close() })
+    const inputAddressIdRegex = `<input type="hidden" id="user-shipping-address-id"(.*?)>`
+    const valorAddressIdRegex = `value="(.*?)"`
+    const [inputAddressIdRegexResult] = data.match(inputAddressIdRegex)
+    const [ignoreToo, deliveryId] = inputAddressIdRegexResult.match(valorAddressIdRegex)
+
+    if (!data || !deliveryAddress || !deliveryId) throw Error('Failed to getDeliveryInformations')
+    return {
+        id: deliveryId,
+        address: deliveryAddress
+    }
 }
 
 const getProductInfo = async ({ cookie, url }) => {
@@ -379,24 +390,27 @@ const bot = async () => {
 
     //login and cookies
     await schedule(executionParams.presetDate, 'Preset')
-    const browser = await executeOrLog(initBrowser)
-    const loginInformations = await infineRetry(login, browser)
-    const cookie = loginInformations.cookies.map(ck => `${ck.name}=${ck.value}`)
-    // const cookie = 'name=value; nikega=GA1.4.216108932.1628772392; chaordic_browserId=0-55FPfpNMpfkLYoUuDThG3Hhwu2HpfLl7KTRI16287723926184849; chaordic_anonymousUserId=anon-0-55FPfpNMpfkLYoUuDThG3Hhwu2HpfLl7KTRI16287723926184849; chaordic_testGroup=%7B%22experiment%22%3Anull%2C%22group%22%3Anull%2C%22testCode%22%3Anull%2C%22code%22%3Anull%2C%22session%22%3Anull%7D; AMCVS_F0935E09512D2C270A490D4D%40AdobeOrg=1; Campanha=; Midia=; s_cc=true; _gcl_au=1.1.1503688976.1628772394; _fbp=fb.2.1628772394608.1374195518; user_unic_ac_id=1821f265-c7e5-e9aa-5161-bd5e4591f4d2; advcake_trackid=fad87e3f-28d9-0165-6c07-2ac931387007; lmd_orig=direct; blueID=7e836ba6-c812-4d3a-8c11-ceaf7e86e2e8; sback_client=5816989a58791059954e4c52; sback_partner=false; sb_days=1628772397356; smeventsclear_16df2784b41e46129645c2417f131191=true; _ga=GA1.3.216108932.1628772392; name=value; __pr.cvh=2-Cczzthp9; SIZEBAY_SESSION_ID_V4=0E824A6C9E8908b421765a1442d09815be5467f5fbfd; __privaci_cookie_consent_uuid=ecc55924-4645-466b-8216-73ea33941a37:2; __privaci_cookie_consent_generated=ecc55924-4645-466b-8216-73ea33941a37:2; __privaci_cookie_consents={"consents":{"127":1,"129":1,"130":1,"132":1},"location":"SP#BR","lang":"pt-br"}; _ce.s=v11slnt~1628775642922; sback_pageview=false; IFCSHOPSESSID=ap0tvisfo2i376lvm2qai56ftv; chaordic_session=1630931273958-0.367251263950106; AMCV_F0935E09512D2C270A490D4D%40AdobeOrg=-1124106680%7CMCIDTS%7C18877%7CMCMID%7C17641837100247587343076244177878306586%7CMCAAMLH-1631536073%7C4%7CMCAAMB-1631536073%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1630938473s%7CNONE%7CvVersion%7C5.2.0; nikega_gid=GA1.4.447666657.1630931274; _gid=GA1.3.1651992830.1630931274; _st_ses=04497448599601639; _sptid=1592; _spcid=1592; _st_cart_script=helper_nike.js; _st_cart_url=/; _st_id=bmV3LmV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSklVekkxTmlKOS5leUpsYldGcGJDSTZJbVJ2WjJSaGNtVmljMEJuYldGcGJDNWpiMjBpZlEuSExxZXdrNzVxQjBYUFNDYkY2eFpWVW5jVHF1SFpISjMxaHRKZ3JBN1RNMC5XcldydXlLcXFCSGVLcVdyZ1BFaWlZ; _cm_ads_activation_retry=false; sback_browser=0-20060900-1630931279061e80efc111f70f87a4642ace34dad055973b2717048638836136094f30fb19-92521223-17024428240,1301764072-1630931279; sback_customer=$2QcyIVRhRVVNhWMzVkNE90TQlXMNJ1Rj9UWwoUVFp2RZBFerlFaycnT30mZChHV48kd3ZURa1WQNdnMvtWWE5UT2$12; sback_access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhcGkuc2JhY2sudGVjaCIsImlhdCI6MTYzMDkzMTI4MCwiZXhwIjoxNjMxMDE3NjgwLCJhcGkiOiJ2MiIsImRhdGEiOnsiY2xpZW50X2lkIjoiNTgxNjk4OWE1ODc5MTA1OTk1NGU0YzUyIiwiY2xpZW50X2RvbWFpbiI6Im5pa2UuY29tLmJyIiwiY3VzdG9tZXJfaWQiOiI2MTE1MTgyYzg0NWIxZjdmMDkwYTI2OTAiLCJjdXN0b21lcl9hbm9ueW1vdXMiOmZhbHNlLCJjb25uZWN0aW9uX2lkIjoiNjExNTE4MmM4NDViMWY3ZjA5MGEyNjkxIiwiYWNjZXNzX2xldmVsIjoiY3VzdG9tZXIifX0.k1BeF1VZo4rOgLg-WZPfcv-xqHKFjTPmqzZ9yShWV-I.WrWruyKqqBHeKqWrgPiYqB; sback_session=613609501e1539535710005b; sback_customer_w=true; sback_refresh_wp=no; sback_cart=61360e434d3c43aeee54e997; bm_sz=91BEF1172836A0DACC1A8571FE654744~YAAQLNXaF7cc7XF7AQAAL2Eouw3Pa5OaDFVkJ2hVIbSUB95hSiKGMCoL9/rwf6kpSfPoU9B8j1qyiPT4SYn8ivvDomcjPTkwRQ4NIhC3jCjpGGYDsiLadKbSHmAasq5ajoKMbCgI/TfExYOFsytGezJjksx60Zu0YGbnmyjnu8USkxOFi3ABQQ4+7O5jm5UU+h/Sbd1dN3nTOHwbEC1yMo+n3XZdYL3GyG1EKFJqIegrHJQC/7aE9D4XKqLIgl7DyC6CQjqxjxhiVM7O6xyL/7QzmX7qPDMTuBI2yDOxiKQH4VXezFJwhT9QSnwvnQC+m7DaK8/u4e7bM2yCc7Ia9f6XhCkFm6CxNbV0k3slXNoQJZW5bzQq2BwPHtVFXXE5EamaYEnsyA==~4338242~3354932; _abck=C294291BB5F7CACA91870AE707BDADD3~-1~YAAQLNXaF5Qo7XF7AQAAwakouwZA7XW7rLf6frZX8N5IsZA1gaui1LdgKzqb7YyQ5eW83P10ESpEwZSnRjVh9IlscYvVtbCZP4+q/zeuQ3+kLE+p13kku7Zn4t8bsrGCzBJWbmDsGbbW4VqmpqTZCSLNxmq+w7X60cMhdZxeX7jiLUZ1dXfuydDszCaQ0o63uGqg9A8lHcRHL/3RGcpmH+waMPLWFFKV6lVNzX0tz3w1hM5OKYOulq/5APUBzPNMYQgpxKajJl2B5ifHsXTyxeiYtEq1Mdj+ru+pg5UZ82PHRRTr4AvaGpBMRhIv6fYwwdoZBt4cwk60ePp6MiVxnFmTBNjDd2+cudf/hMwJorRU7BlA8nF3W3spQ0qQwcIjKsstIglqiNsJF9YHIU8dM0GQhHLH76T9fyaVzLECL9FEFCLGhvZO5+6mwanesJ0TZRY5YJGR5VMlTpzJnlvE8sHLTMqG6uNJvkDqiCIb3y5Gr/CfyXFfvz8436OFN+/TAfM3o7wJ2c7B3hA=~-1~-1~-1; isLogged=1; isLogged=true; sback_current_session=1; sback_total_sessions=25; chaordic_realUserId=4136319; lx_sales_channel=%5B%222%22%5D; __udf_j=50e11a5eadfb7600c5eb4e7e31a08cd6fc565d114e8f3618362c108aecddbe8346ef750cb5279cfe86c89e4a6a445260; gpv_v70=nikecombr%3Echeckout%3Ecart; pv_templateName=CART; gptype_v60=cart; _st_idb=bmV3LmV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSklVekkxTmlKOS5leUpsYldGcGJDSTZJbVJ2WjJSaGNtVmljMEJuYldGcGJDNWpiMjBpZlEuSExxZXdrNzVxQjBYUFNDYkY2eFpWVW5jVHF1SFpISjMxaHRKZ3JBN1RNMC5XcldydXlLcXFCSGVLcVdyZ1BFaWlZ; lmd_traf=direct-1630936813312&direct-1630936820439&direct-1630937837111&direct-1630937909870; s_sq=%5B%5BB%5D%5D; _uetsid=dcba15300f0d11ec819c9179f71da488; _uetvid=537e67f0fb6b11eb94c87dc474f63058; stc119288=env:1630931276%7C20211007122756%7C20210906145304%7C39%7C1088071:20220906142304|uid:1628772395091.1929272745.11269.119288.1041404097.9:20220906142304|srchist:1088071%3A1630931276%3A20211007122756:20220906142304|tsa:1630931276276.960668097.5939989.39894466550971996.:20210906145304; _spl_pv=366; CSRFtoken=e05316abb772ada4656095fcb3b97395; ak_bmsc=121A52D582CC413FB2D80D23D8C89514~000000000000000000000000000000~YAAQ3dhHaOfl7nh7AQAACnmFuw3/FJOGP/OH+Toglkpg0519VJRz2lA4FC8MH5LpRa+HA5+y/b8IdmCKzAMRk2l2Uh8cY6CxnjUSc8ymLvUMG3nF2OzGPEU7GO/SQ7TSOnzHkrGoxlXs8nvrDDWaUCLpJJZskiQ2VVLz/zFj6N1jwsOWR8dPhJNGh+q9lNn2TwPrD4kYJwNEm/xAdxNzHRy2UiTGzA1LtRMKcmnNTqVEWjRdpHOJOd4YtuK37CM+YdmcSHWs4WjbIKjKiVzf2tF/vn6ezW17q0yOsqYZqgB+lCjSd7B8RcQqEyDmZ9fqY62uYX2yayW0aTtXH7B4GBSUbgoF0BEqHhAYHFtM5gqITyraJrHYZqsYjdY2M0/gm0PeCY79Pma5tVtR; RT="z=1&dm=nike.com.br&si=a9bc2867-2907-497f-b2cc-19afeee57e65&ss=kt8q9z3z&sl=8&tt=9q4&bcn=%2F%2F173e2515.akstat.io%2F&obo=1&ul=icmj&hd=idca"'
+
+    // const browser = await executeOrLog(initBrowser)
+    // const loginInformations = await infineRetry(login, browser)
+    // const cookie = loginInformations.cookies.map(ck => `${ck.name}=${ck.value}`)
+
+    const cookie = 'name=value; Campanha=; Midia=; name=value; nikega=GA1.4.439398858.1633786578; _ga=GA1.3.439398858.1633786578; s_cc=true; __pr.cvh=vqnlvq3jr6; SIZEBAY_SESSION_ID_V4=1643A8ECAD39fd34398a8727414b8dbd7070f1b8331e; _gcl_au=1.1.1205611723.1633786580; user_unic_ac_id=8c322c28-2d50-68bb-1570-292c2acb14c9; advcake_trackid=da96c412-011a-d58c-0e20-587d4bcc474e; _fbp=fb.2.1633786626324.807380073; sb_days=1633786627964; smeventsclear_16df2784b41e46129645c2417f131191=true; AMCVS_F0935E09512D2C270A490D4D%40AdobeOrg=1; chaordic_testGroup=%7B%22experiment%22%3Anull%2C%22group%22%3Anull%2C%22testCode%22%3Anull%2C%22code%22%3Anull%2C%22session%22%3Anull%7D; chaordic_browserId=0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; chaordic_anonymousUserId=anon-0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; blueID=dcfc3510-f641-43ab-9594-9e4b66a89880; _pin_unauth=dWlkPU5HSTFOR0ZrWkRBdE9EVmhPUzAwTkdRNExXRXhZV1l0T0RjMVpHRTFOMll4TTJNMA; __privaci_cookie_consent_uuid=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; __privaci_cookie_consent_generated=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; sback_client=5816989a58791059954e4c52; sback_partner=false; IFCSHOPSESSID=2eo4v268q43arnuiq0qefqui6g; nikega_gid=GA1.4.890475087.1634767673; _gid=GA1.3.1862098394.1634767673; sback_browser=0-79185500-16347680053233f97b3858a1a6a36005293da24fe6abbf9382119942834061709485c154b3-26981300-200170183117,130176164160-1634768005; _cm_ads_activation_retry=false; sback_customer=$2gTyoWRvp2VOVme4FVSq5mTCtWbkRHVUllNxMWVqRFSPF1aBZFTU9mTmFjTNl0Rw8UR6JUS2RlNalHa45kcqlmW2$12; sback_access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhcGkuc2JhY2sudGVjaCIsImlhdCI6MTYzNDc2ODAwNiwiZXhwIjoxNjM0ODU0NDA2LCJhcGkiOiJ2MiIsImRhdGEiOnsiY2xpZW50X2lkIjoiNTgxNjk4OWE1ODc5MTA1OTk1NGU0YzUyIiwiY2xpZW50X2RvbWFpbiI6Im5pa2UuY29tLmJyIiwiY3VzdG9tZXJfaWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhM2YiLCJjdXN0b21lcl9hbm9ueW1vdXMiOnRydWUsImNvbm5lY3Rpb25faWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhNDAiLCJhY2Nlc3NfbGV2ZWwiOiJjdXN0b21lciJ9fQ.aGSlEsESVa0c_SckeM8_CnoD1mOUbS9vr-wC44JvGK4.WrWruyKqzREiuyiYqBqBuy; sback_customer_w=true; sback_refresh_wp=no; ak_bmsc=33AA6836C13382A6850CBCE3D67D18B1~000000000000000000000000000000~YAAQBNlHaOgYhZ58AQAAOlCPoA1cLS1tgJ5o+sQuQRuGwrC1b8K8Zfm8lqi5YuLhf+3y1Qd15VaXwOl/7yJfZ1LBk+6Gx1eG0CzcSyKHnkCidi9aJ2HJnBQVr3EWf8wPL2LpAxj6sezzmBSgu/f3LkMuns/Wj556FMJgq1jXS8w6I/eEAYoypc9evDnkP4RWNOCO8VGrCC3HqKBagxVCw6sgcnljPzwf0D4CHL5yi49GzDFDxPwbmVEYnzQP2+mVmPB9SwpeIbBeDF1YBGjfuoNQJwbhQj1adDPKsThw0PkMcb7dTBoIVbCmAkjTKH7l2p81x/IzunNunGD7XsT/Khj/gQv74hMBy9J1ISdtUsVVln5aFWZAoyc6eEd+VFj/gjd25pWs69qn2/Wm; bm_sz=09CAE9628D5D521C7E55442B06F5ACA0~YAAQBNlHaOkYhZ58AQAAO1CPoA1lxQm/jYougQWuXGd8EuUSlqvUnzoGIV01aThjrhyGssGhB3btP7VZoxAmH4hNOsope33PLjX3h/wIFVBXUUVWnGmmXjpcGCoHbti7fkeFl/oyGlY7VxJaHuPZPpjChuIoUR1jbj44iwrj3s7r36SHwHemQjQXRSl/tn0FM+LNzjPClh/AqkdlKVJjGny8qlCrQdCzQGHkmBNvnCgi5JfLn8vvd/QLpflvXJIVCUaxieeNLJy8gBASg/VFEn1peeaTWdf7IFxxItKNFMvnZkYUc4OdVPoQlmkLXdaHcuWjVlAhTyymxwCD~3163440~4474165; chaordic_session=1634781319845-0.11161234999374758; AMCV_F0935E09512D2C270A490D4D%40AdobeOrg=-1124106680%7CMCIDTS%7C18921%7CMCMID%7C17641837100247587343076244177878306586%7CMCAAMLH-1635386120%7C4%7CMCAAMB-1635386120%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1634788520s%7CNONE%7CvVersion%7C5.2.0; _st_ses=923380525497703; _sptid=1592; _spcid=1592; _st_cart_script=helper_nike.js; _st_cart_url=/; _st_id=bmV3LmV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSklVekkxTmlKOS5leUpsYldGcGJDSTZJbVJ2WjJSaGNtVmljMEJuYldGcGJDNWpiMjBpZlEuM1hTNVlmV29Rb0NDWkpuZFZiQ1JUX2NRVWFMOUVMQ0JJdG5jSi1GdU8zNC5XcldydXlLcXpSRWlpWVdyS3FnUFdy; sback_current_session=1; sback_total_sessions=5; isLogged=1; isLogged=true; _abck=AEEAD49E7C96598478897A03B3167AA2~0~YAAQBNlHaK8bhZ58AQAAyryPoAYVaYmv/X/6OgX10L1vr9/AOXSbmDhAgiRnlzpXdOiJnArz9qac08j7mFEqmVHCKZ+vXcIv7ol4Iq4X4gASUUaQ39YQ1mzEuOA4ibjFxWF5lZSkKNPerN7SRErwuKEUsZA0ExzL+jBwd3U5l4En78224T6h0suebG71Adhs2EK3zljNkggE89HHksP7boEhXzuIBpep/LMfEj9tOEel/O+Bpc4KLjm+ipm+34XHE6AAWGIjVtc0ySOgUSsXJ7L9PjogR6f+kYWRbqLBQ0qj9Rq+VawiuUK7WgbGE5PV42+XDNl5psO2AijmeiD3haMbVlpDSdyAFZBd6nJELjqN1yhTWsaErbbrnll+4VVpPlxooBVR0QRSRA5RwqnaatMSLFDJUw==~-1~-1~-1; __privaci_cookie_consents={"consents":{"127":1,"129":1,"130":1,"132":1},"location":"MG#BR","lang":"pt-br"}; sback_cart=6170c8c895223dc131061eac; __udf_j=380b17090d67b619a9ee61c0fcea082d8c34530197fe83ba93aeb8a2a8c05797f53786f1cc75ab049c1fe2ce16e4b6b3; gpv_v70=no%20value; pv_templateName=no%20value; gptype_v60=no%20value; smeventssent_16df2784b41e46129645c2417f131191=true; s_sq=%5B%5BB%5D%5D; _derived_epik=dj0yJnU9clpCMEd3MFFrSS0wM3liT1BJTlh3YnRETTdxWU1kTEYmbj1yM2h4OXhSU0NkNVVkd1Fuc2IzM1ZnJm09MSZ0PUFBQUFBR0Z3eWkwJnJtPTEmcnQ9QUFBQUFHRnd5aTA; _uetsid=2bd862f031f211eca60b6bd4a9ca18a0; _uetvid=537e67f0fb6b11eb94c87dc474f63058; stc119288=env:1634781335%7C20211121015535%7C20211021023221%7C9%7C1088072:20221021020221|uid:1633786949435.421259805.32019377.119288.139243673.:20221021020221|srchist:1088072%3A1%3A20211109134229%7C1088071%3A1633896133%3A20211110200213%7C1088072%3A1633896150%3A20211110200230%7C1088071%3A1634302097%3A20211115124817%7C1088072%3A1634302111%3A20211115124831%7C1088071%3A1634426035%3A20211116231355%7C1088072%3A1634768005%3A20211120221325%7C1088071%3A1634781320%3A20211121015520%7C1088072%3A1634781335%3A20211121015535:20221021020221|tsa:0:20211021023221; _spl_pv=32; CSRFtoken=a123be2a3c140013e5aa908c09c3cf38; bm_sv=DE358D50F0EC224DD11133C490BABC21~3Zlm/VVdVBmTHglZFISuGeXNQ9XvBl82WuzqxXqgnrHOt5FZoiNz/lnSL6lr5NKXpnayTzygBY/gdXKbhvBOiHpWnwkxZAQ/TItEybxqBEj0cZzaFTXIntd9ZrJNW/8Jhnv2kfi92F4IuQQqOX6lL3VcNOY5vsumkTUWsV4sGqM=; RT="z=1&dm=nike.com.br&si=fa3d03d6-c0a4-4c80-a5d0-c985eb6a8ab8&ss=kv0al6l4&sl=a&tt=gz9&bcn=%2F%2F173e2508.akstat.io%2F&obo=1"; _gat_nikelaunchga=1; _gat_gtag_UA_142883149_1=1'
 
     //preset product infos
 
     const getPresetProductInfoFn = async () => await executeOrLog(getProductInfo, { cookie, url: executionParams.preset })
     const presetProductResponse = await infineRetry(getPresetProductInfoFn)
-    const presetProductId = await executeOrLog(getProductId, { data: presetProductResponse, tamanho: 38 })
+    const presetProductId = await executeOrLog(getProductId, { data: presetProductResponse, tamanho: executionParams.presetNumber })
     const presetCartAddFn = async () => await executeOrLog(cartAdd, { cookie, referer: executionParams.preset, productId: presetProductId })
     const cartAddResponse = await infineRetry(presetCartAddFn)
 
     //delivery and payment infos
-
-    const getDeliveryInformationFn = async () => await executeOrLog(getDeliveryInformations, browser)
+    const getDeliveryInformationFn = async () => await executeOrLog(getDeliveryInformations, { cookie })
     const deliveryInformations = await infineRetry(getDeliveryInformationFn)
-    await browser.close()
+
+    // await browser.close()
+
     const calculateDeliveryFn = async () => await executeOrLog(calculateDelivery, { cookie, cep: deliveryInformations.address })
     const calculateDeliveryResponse = await infineRetry(calculateDeliveryFn)
     const selectDeliveryFn = async () => await executeOrLog(selectDelivery, { cookie, deliveryType: calculateDeliveryResponse })
@@ -412,11 +426,11 @@ const bot = async () => {
     //product infos
     await schedule(executionParams.date, 'Product Info')
     const getProductInfoFn = async () => await executeOrLog(getProductInfo, { cookie, url: executionParams.product })
-    const productResponse = await infineRetry(getProductInfoFn, {}, 5000)
-    const productId = await executeOrLog(getProductId, { data: productResponse, tamanho: 40 })
-    const twoFactorProductId = await executeOrLog(getProductTwoFactorId, { data: productResponse, tamanho: 40 })
+    const productResponse = await infineRetry(getProductInfoFn, {}, 10000)
+    const productId = await executeOrLog(getProductId, { data: productResponse, tamanho: executionParams.productNumber })
+    const twoFactorProductId = await executeOrLog(getProductTwoFactorId, { data: productResponse, tamanho: executionParams.productNumber })
     const cartAddFn = async () => await executeOrLog(cartAdd, { cookie, referer: executionParams.product, productId: productId, twoFactorId: twoFactorProductId })
-    const productCartAddResponse = await infineRetry(cartAddFn, {}, 5000)
+    const productCartAddResponse = await infineRetry(cartAddFn, {}, 10000)
     console.log(productCartAddResponse)
 
     // bough product
@@ -427,3 +441,30 @@ const bot = async () => {
 }
 
 bot()
+// const teste = async () => {
+//     const cookie = 'name=value; Campanha=; Midia=; name=value; nikega=GA1.4.439398858.1633786578; _ga=GA1.3.439398858.1633786578; s_cc=true; __pr.cvh=vqnlvq3jr6; SIZEBAY_SESSION_ID_V4=1643A8ECAD39fd34398a8727414b8dbd7070f1b8331e; _gcl_au=1.1.1205611723.1633786580; user_unic_ac_id=8c322c28-2d50-68bb-1570-292c2acb14c9; advcake_trackid=da96c412-011a-d58c-0e20-587d4bcc474e; _fbp=fb.2.1633786626324.807380073; sb_days=1633786627964; smeventsclear_16df2784b41e46129645c2417f131191=true; AMCVS_F0935E09512D2C270A490D4D%40AdobeOrg=1; chaordic_testGroup=%7B%22experiment%22%3Anull%2C%22group%22%3Anull%2C%22testCode%22%3Anull%2C%22code%22%3Anull%2C%22session%22%3Anull%7D; chaordic_browserId=0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; chaordic_anonymousUserId=anon-0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; blueID=dcfc3510-f641-43ab-9594-9e4b66a89880; _pin_unauth=dWlkPU5HSTFOR0ZrWkRBdE9EVmhPUzAwTkdRNExXRXhZV1l0T0RjMVpHRTFOMll4TTJNMA; __privaci_cookie_consent_uuid=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; __privaci_cookie_consent_generated=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; sback_client=5816989a58791059954e4c52; sback_partner=false; IFCSHOPSESSID=2eo4v268q43arnuiq0qefqui6g; nikega_gid=GA1.4.890475087.1634767673; _gid=GA1.3.1862098394.1634767673; sback_browser=0-79185500-16347680053233f97b3858a1a6a36005293da24fe6abbf9382119942834061709485c154b3-26981300-200170183117,130176164160-1634768005; _cm_ads_activation_retry=false; sback_customer=$2gTyoWRvp2VOVme4FVSq5mTCtWbkRHVUllNxMWVqRFSPF1aBZFTU9mTmFjTNl0Rw8UR6JUS2RlNalHa45kcqlmW2$12; sback_access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhcGkuc2JhY2sudGVjaCIsImlhdCI6MTYzNDc2ODAwNiwiZXhwIjoxNjM0ODU0NDA2LCJhcGkiOiJ2MiIsImRhdGEiOnsiY2xpZW50X2lkIjoiNTgxNjk4OWE1ODc5MTA1OTk1NGU0YzUyIiwiY2xpZW50X2RvbWFpbiI6Im5pa2UuY29tLmJyIiwiY3VzdG9tZXJfaWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhM2YiLCJjdXN0b21lcl9hbm9ueW1vdXMiOnRydWUsImNvbm5lY3Rpb25faWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhNDAiLCJhY2Nlc3NfbGV2ZWwiOiJjdXN0b21lciJ9fQ.aGSlEsESVa0c_SckeM8_CnoD1mOUbS9vr-wC44JvGK4.WrWruyKqzREiuyiYqBqBuy; sback_customer_w=true; sback_refresh_wp=no; ak_bmsc=33AA6836C13382A6850CBCE3D67D18B1~000000000000000000000000000000~YAAQBNlHaOgYhZ58AQAAOlCPoA1cLS1tgJ5o+sQuQRuGwrC1b8K8Zfm8lqi5YuLhf+3y1Qd15VaXwOl/7yJfZ1LBk+6Gx1eG0CzcSyKHnkCidi9aJ2HJnBQVr3EWf8wPL2LpAxj6sezzmBSgu/f3LkMuns/Wj556FMJgq1jXS8w6I/eEAYoypc9evDnkP4RWNOCO8VGrCC3HqKBagxVCw6sgcnljPzwf0D4CHL5yi49GzDFDxPwbmVEYnzQP2+mVmPB9SwpeIbBeDF1YBGjfuoNQJwbhQj1adDPKsThw0PkMcb7dTBoIVbCmAkjTKH7l2p81x/IzunNunGD7XsT/Khj/gQv74hMBy9J1ISdtUsVVln5aFWZAoyc6eEd+VFj/gjd25pWs69qn2/Wm; bm_sz=09CAE9628D5D521C7E55442B06F5ACA0~YAAQBNlHaOkYhZ58AQAAO1CPoA1lxQm/jYougQWuXGd8EuUSlqvUnzoGIV01aThjrhyGssGhB3btP7VZoxAmH4hNOsope33PLjX3h/wIFVBXUUVWnGmmXjpcGCoHbti7fkeFl/oyGlY7VxJaHuPZPpjChuIoUR1jbj44iwrj3s7r36SHwHemQjQXRSl/tn0FM+LNzjPClh/AqkdlKVJjGny8qlCrQdCzQGHkmBNvnCgi5JfLn8vvd/QLpflvXJIVCUaxieeNLJy8gBASg/VFEn1peeaTWdf7IFxxItKNFMvnZkYUc4OdVPoQlmkLXdaHcuWjVlAhTyymxwCD~3163440~4474165; chaordic_session=1634781319845-0.11161234999374758; AMCV_F0935E09512D2C270A490D4D%40AdobeOrg=-1124106680%7CMCIDTS%7C18921%7CMCMID%7C17641837100247587343076244177878306586%7CMCAAMLH-1635386120%7C4%7CMCAAMB-1635386120%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1634788520s%7CNONE%7CvVersion%7C5.2.0; _st_ses=923380525497703; _sptid=1592; _spcid=1592; _st_cart_script=helper_nike.js; _st_cart_url=/; _st_id=bmV3LmV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSklVekkxTmlKOS5leUpsYldGcGJDSTZJbVJ2WjJSaGNtVmljMEJuYldGcGJDNWpiMjBpZlEuM1hTNVlmV29Rb0NDWkpuZFZiQ1JUX2NRVWFMOUVMQ0JJdG5jSi1GdU8zNC5XcldydXlLcXpSRWlpWVdyS3FnUFdy; sback_current_session=1; sback_total_sessions=5; smeventssent_16df2784b41e46129645c2417f131191=true; isLogged=1; isLogged=true; _abck=AEEAD49E7C96598478897A03B3167AA2~0~YAAQBNlHaK8bhZ58AQAAyryPoAYVaYmv/X/6OgX10L1vr9/AOXSbmDhAgiRnlzpXdOiJnArz9qac08j7mFEqmVHCKZ+vXcIv7ol4Iq4X4gASUUaQ39YQ1mzEuOA4ibjFxWF5lZSkKNPerN7SRErwuKEUsZA0ExzL+jBwd3U5l4En78224T6h0suebG71Adhs2EK3zljNkggE89HHksP7boEhXzuIBpep/LMfEj9tOEel/O+Bpc4KLjm+ipm+34XHE6AAWGIjVtc0ySOgUSsXJ7L9PjogR6f+kYWRbqLBQ0qj9Rq+VawiuUK7WgbGE5PV42+XDNl5psO2AijmeiD3haMbVlpDSdyAFZBd6nJELjqN1yhTWsaErbbrnll+4VVpPlxooBVR0QRSRA5RwqnaatMSLFDJUw==~-1~-1~-1; __privaci_cookie_consents={"consents":{"127":1,"129":1,"130":1,"132":1},"location":"MG#BR","lang":"pt-br"}; chaordic_realUserId=4136319; lx_sales_channel=%5B%222%22%5D; _gat_nikelaunchga=1; _gat_gtag_UA_142883149_1=1; s_sq=%5B%5BB%5D%5D; _derived_epik=dj0yJnU9T3FTR2Zyako1clZjUXowNE5hbXM2ZERtSDF6Mjl1bVUmbj1iZFFLM3ZGZl9xd25CNnBHbDR0OFdnJm09MSZ0PUFBQUFBR0Z3eU1jJnJtPTEmcnQ9QUFBQUFHRnd5TWM; _gat_gtag_UA_101374395_1=1; _uetsid=2bd862f031f211eca60b6bd4a9ca18a0; _uetvid=537e67f0fb6b11eb94c87dc474f63058; _spl_pv=28; stc119288=env:1634781335%7C20211121015535%7C20211021022623%7C5%7C1088072:20221021015623|uid:1633786949435.421259805.32019377.119288.139243673.:20221021015623|srchist:1088072%3A1%3A20211109134229%7C1088071%3A1633896133%3A20211110200213%7C1088072%3A1633896150%3A20211110200230%7C1088071%3A1634302097%3A20211115124817%7C1088072%3A1634302111%3A20211115124831%7C1088071%3A1634426035%3A20211116231355%7C1088072%3A1634768005%3A20211120221325%7C1088071%3A1634781320%3A20211121015520%7C1088072%3A1634781335%3A20211121015535:20221021015623|tsa:0:20211021022623; sback_cart=6170c8c895223dc131061eac; CSRFtoken=822be366f73742fe16acb87ffe463638; bm_sv=DE358D50F0EC224DD11133C490BABC21~3Zlm/VVdVBmTHglZFISuGeXNQ9XvBl82WuzqxXqgnrHOt5FZoiNz/lnSL6lr5NKXpnayTzygBY/gdXKbhvBOiHpWnwkxZAQ/TItEybxqBEjXye64Pb7WxR7SpzLbhJMPH0+OG56icxfy8F2sfFslOq9h6zEvqKVOOeS9cJ5RbwM=; RT="z=1&dm=nike.com.br&si=fa3d03d6-c0a4-4c80-a5d0-c985eb6a8ab8&ss=kv0al6l4&sl=6&tt=atm&bcn=%2F%2F173e2508.akstat.io%2F"; gpv_v70=nikecombr%3Echeckout%3Eaddress; pv_templateName=CHECKOUT; gptype_v60=checkout%3Aaddress'
+//     const headers = {
+//         cookie,
+//         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+//         origin: 'https://www.nike.com.br',
+//     }
+//     const response = await axios({
+//         method: 'post',
+//         url: 'https://www.nike.com.br/checkout',
+//         headers,
+//     })
+//     const inputCepRegex = `<input type="hidden" id="calcularFreteCallback"(.*?)>`
+//     const valorCepRegex = `value="(.*?)"`
+//     const [inputCepRegexResult] = response.data.match(inputCepRegex)
+//     const [ignore, cep] = inputCepRegexResult.match(valorCepRegex)
+
+//     const inputAddressIdRegex = `<input type="hidden" id="user-shipping-address-id"(.*?)>`
+//     const valorAddressIdRegex = `value="(.*?)"`
+//     const [inputAddressIdRegexResult] = response.data.match(inputAddressIdRegex)
+//     const [ignoreToo, addresId] = inputAddressIdRegexResult.match(valorAddressIdRegex)
+//     console.log(cep, addresId)
+
+
+// }
+
+// teste()

@@ -1,22 +1,13 @@
-const puppeter = require('puppeteer')
 const axios = require('axios').default
 const readlineSync = require('readline-sync')
 
 const executionParams = {
-    // username: 'arthurrangel427@gmail.com',
-    // password: 'ArthurRARC1',
-    // username: 'arthurdarebs@gmail.com',
-    // password: 'ArthurRARC12',
-    // username: 'dogdarebs@gmail.com',
-    // password: 'ArthurRARC2',
-    // username: 'pedromwg@gmail.com',
-    // password: 'PedroMWG1',
-    date: '2021-09-16 10:00:00',
-    presetDate: '2021-09-16 09:53:00',
+    date: '2021-10-26 10:00:00',
+    presetDate: '2021-10-26 09:51:00',
     preset: 'https://www.nike.com.br/tenis-nike-pegasus-trail-3-masculino-153-169-224-324706?gridPosition=G1',
-    product: 'https://www.nike.com.br/dunk-high-x-fragment-design-67-80-445-331128',
+    product: 'https://www.nike.com.br/sb-dunk-high-pro-513-514-515-222656',
     presetNumber: 38,
-    productNumber: 28,
+    productNumber: 43,
     phoneNumber: '34992291965',
     waitForSelector: {
         visible: true,
@@ -151,6 +142,7 @@ const getDeliveryInformations = async ({ cookie }) => {
         method: 'post',
         url: 'https://www.nike.com.br/checkout',
         headers,
+        timeout: 60000
     })
     const inputCepRegex = `<input type="hidden" id="calcularFreteCallback"(.*?)>`
     const valorCepRegex = `value="(.*?)"`
@@ -179,7 +171,8 @@ const getProductInfo = async ({ cookie, url }) => {
     const { data } = await axios({
         method: 'post',
         url: 'https://www.nike.com.br/Requisicao/Ajax',
-        headers
+        headers,
+        timeout: 60000
     })
     if (!data || !data.Carrinho_Resumo) throw Error('Failed to getProductInfo')
     return data
@@ -197,11 +190,14 @@ const cartAdd = async ({ cookie, productId, referer, twoFactorId }) => {
         method: 'post',
         url: 'https://www.nike.com.br/Carrinho/Adicionar',
         data: dataRequest,
-        headers
+        headers,
+        timeout: 60000
     })
 
     if (!data.success && data.twoFactorAuth) {
-        await executeOrLog(twoFactorGenerate, { cookie, referer, productId: twoFactorId })
+
+        const twoFactor = async () => await executeOrLog(twoFactorGenerate, { cookie, referer, productId: twoFactorId })
+        await infineRetry(twoFactor)
         const code = await readlineSync.question("Codigo de autenticação: \n", {
             limit: (input) => input.length === 6,
             limitMessage: 'Codigo de autenticação deve ter 6 caracteres'
@@ -229,7 +225,8 @@ const twoFactorGenerate = async ({ cookie, referer, productId }) => {
         method: 'post',
         url: 'https://www.nike.com.br/auth/two-factor/generate',
         headers,
-        data: dataRequest
+        data: dataRequest,
+        timeout: 60000
     })
 
     if (!data || !data.valid) {
@@ -251,7 +248,8 @@ const twoFactorConfirm = async ({ cookie, referer, productId, code }) => {
         method: 'post',
         url: 'https://www.nike.com.br/auth/two-factor/validate',
         headers,
-        data: dataRequest
+        data: dataRequest,
+        timeout: 60000
     })
 
     if (!data || !data.valid) {
@@ -289,7 +287,8 @@ const selectDelivery = async ({ cookie, deliveryType }) => {
         method: 'post',
         url: 'https://www.nike.com.br/Frete/EscolheFreteCarrinho',
         data: dataRequest,
-        headers
+        headers,
+        timeout: 60000
     })
     const { data } = response
     if (!data || !data.success) {
@@ -308,7 +307,8 @@ const findCarts = async ({ cookie }) => {
     const requestResponse = await axios({
         method: 'post',
         url: 'https://www.nike.com.br/Checkout/VerificaCartoesSalvos',
-        headers
+        headers,
+        timeout: 60000
     })
     const { data } = requestResponse
     if (!data || !data.success) {
@@ -336,7 +336,8 @@ const buyProduct = async ({ cookie, cardInformations, deliveryInformations }) =>
         method: 'post',
         url: 'https://www.nike.com.br/Pagamento/gravarPedido',
         headers,
-        data: dataRequest
+        data: dataRequest,
+        timeout: 60000
     })
     const { data } = response
     if (!data || !data.success) {
@@ -357,7 +358,8 @@ const clearCart = async ({ cookie, productId }) => {
         method: 'post',
         url: 'https://www.nike.com.br/Carrinho/Excluir',
         headers,
-        data: dataRequest
+        data: dataRequest,
+        timeout: 60000
     })
     const { data } = response
     if (!data || !data.success) {
@@ -395,8 +397,7 @@ const bot = async () => {
     // const loginInformations = await infineRetry(login, browser)
     // const cookie = loginInformations.cookies.map(ck => `${ck.name}=${ck.value}`)
 
-    const cookie = 'name=value; Campanha=; Midia=; name=value; nikega=GA1.4.439398858.1633786578; _ga=GA1.3.439398858.1633786578; s_cc=true; __pr.cvh=vqnlvq3jr6; SIZEBAY_SESSION_ID_V4=1643A8ECAD39fd34398a8727414b8dbd7070f1b8331e; _gcl_au=1.1.1205611723.1633786580; user_unic_ac_id=8c322c28-2d50-68bb-1570-292c2acb14c9; advcake_trackid=da96c412-011a-d58c-0e20-587d4bcc474e; _fbp=fb.2.1633786626324.807380073; sb_days=1633786627964; smeventsclear_16df2784b41e46129645c2417f131191=true; AMCVS_F0935E09512D2C270A490D4D%40AdobeOrg=1; chaordic_testGroup=%7B%22experiment%22%3Anull%2C%22group%22%3Anull%2C%22testCode%22%3Anull%2C%22code%22%3Anull%2C%22session%22%3Anull%7D; chaordic_browserId=0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; chaordic_anonymousUserId=anon-0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; blueID=dcfc3510-f641-43ab-9594-9e4b66a89880; _pin_unauth=dWlkPU5HSTFOR0ZrWkRBdE9EVmhPUzAwTkdRNExXRXhZV1l0T0RjMVpHRTFOMll4TTJNMA; __privaci_cookie_consent_uuid=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; __privaci_cookie_consent_generated=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; sback_client=5816989a58791059954e4c52; sback_partner=false; IFCSHOPSESSID=2eo4v268q43arnuiq0qefqui6g; nikega_gid=GA1.4.890475087.1634767673; _gid=GA1.3.1862098394.1634767673; sback_browser=0-79185500-16347680053233f97b3858a1a6a36005293da24fe6abbf9382119942834061709485c154b3-26981300-200170183117,130176164160-1634768005; _cm_ads_activation_retry=false; sback_customer=$2gTyoWRvp2VOVme4FVSq5mTCtWbkRHVUllNxMWVqRFSPF1aBZFTU9mTmFjTNl0Rw8UR6JUS2RlNalHa45kcqlmW2$12; sback_access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhcGkuc2JhY2sudGVjaCIsImlhdCI6MTYzNDc2ODAwNiwiZXhwIjoxNjM0ODU0NDA2LCJhcGkiOiJ2MiIsImRhdGEiOnsiY2xpZW50X2lkIjoiNTgxNjk4OWE1ODc5MTA1OTk1NGU0YzUyIiwiY2xpZW50X2RvbWFpbiI6Im5pa2UuY29tLmJyIiwiY3VzdG9tZXJfaWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhM2YiLCJjdXN0b21lcl9hbm9ueW1vdXMiOnRydWUsImNvbm5lY3Rpb25faWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhNDAiLCJhY2Nlc3NfbGV2ZWwiOiJjdXN0b21lciJ9fQ.aGSlEsESVa0c_SckeM8_CnoD1mOUbS9vr-wC44JvGK4.WrWruyKqzREiuyiYqBqBuy; sback_customer_w=true; sback_refresh_wp=no; ak_bmsc=33AA6836C13382A6850CBCE3D67D18B1~000000000000000000000000000000~YAAQBNlHaOgYhZ58AQAAOlCPoA1cLS1tgJ5o+sQuQRuGwrC1b8K8Zfm8lqi5YuLhf+3y1Qd15VaXwOl/7yJfZ1LBk+6Gx1eG0CzcSyKHnkCidi9aJ2HJnBQVr3EWf8wPL2LpAxj6sezzmBSgu/f3LkMuns/Wj556FMJgq1jXS8w6I/eEAYoypc9evDnkP4RWNOCO8VGrCC3HqKBagxVCw6sgcnljPzwf0D4CHL5yi49GzDFDxPwbmVEYnzQP2+mVmPB9SwpeIbBeDF1YBGjfuoNQJwbhQj1adDPKsThw0PkMcb7dTBoIVbCmAkjTKH7l2p81x/IzunNunGD7XsT/Khj/gQv74hMBy9J1ISdtUsVVln5aFWZAoyc6eEd+VFj/gjd25pWs69qn2/Wm; bm_sz=09CAE9628D5D521C7E55442B06F5ACA0~YAAQBNlHaOkYhZ58AQAAO1CPoA1lxQm/jYougQWuXGd8EuUSlqvUnzoGIV01aThjrhyGssGhB3btP7VZoxAmH4hNOsope33PLjX3h/wIFVBXUUVWnGmmXjpcGCoHbti7fkeFl/oyGlY7VxJaHuPZPpjChuIoUR1jbj44iwrj3s7r36SHwHemQjQXRSl/tn0FM+LNzjPClh/AqkdlKVJjGny8qlCrQdCzQGHkmBNvnCgi5JfLn8vvd/QLpflvXJIVCUaxieeNLJy8gBASg/VFEn1peeaTWdf7IFxxItKNFMvnZkYUc4OdVPoQlmkLXdaHcuWjVlAhTyymxwCD~3163440~4474165; chaordic_session=1634781319845-0.11161234999374758; AMCV_F0935E09512D2C270A490D4D%40AdobeOrg=-1124106680%7CMCIDTS%7C18921%7CMCMID%7C17641837100247587343076244177878306586%7CMCAAMLH-1635386120%7C4%7CMCAAMB-1635386120%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1634788520s%7CNONE%7CvVersion%7C5.2.0; _st_ses=923380525497703; _sptid=1592; _spcid=1592; _st_cart_script=helper_nike.js; _st_cart_url=/; _st_id=bmV3LmV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSklVekkxTmlKOS5leUpsYldGcGJDSTZJbVJ2WjJSaGNtVmljMEJuYldGcGJDNWpiMjBpZlEuM1hTNVlmV29Rb0NDWkpuZFZiQ1JUX2NRVWFMOUVMQ0JJdG5jSi1GdU8zNC5XcldydXlLcXpSRWlpWVdyS3FnUFdy; sback_current_session=1; sback_total_sessions=5; isLogged=1; isLogged=true; _abck=AEEAD49E7C96598478897A03B3167AA2~0~YAAQBNlHaK8bhZ58AQAAyryPoAYVaYmv/X/6OgX10L1vr9/AOXSbmDhAgiRnlzpXdOiJnArz9qac08j7mFEqmVHCKZ+vXcIv7ol4Iq4X4gASUUaQ39YQ1mzEuOA4ibjFxWF5lZSkKNPerN7SRErwuKEUsZA0ExzL+jBwd3U5l4En78224T6h0suebG71Adhs2EK3zljNkggE89HHksP7boEhXzuIBpep/LMfEj9tOEel/O+Bpc4KLjm+ipm+34XHE6AAWGIjVtc0ySOgUSsXJ7L9PjogR6f+kYWRbqLBQ0qj9Rq+VawiuUK7WgbGE5PV42+XDNl5psO2AijmeiD3haMbVlpDSdyAFZBd6nJELjqN1yhTWsaErbbrnll+4VVpPlxooBVR0QRSRA5RwqnaatMSLFDJUw==~-1~-1~-1; __privaci_cookie_consents={"consents":{"127":1,"129":1,"130":1,"132":1},"location":"MG#BR","lang":"pt-br"}; sback_cart=6170c8c895223dc131061eac; __udf_j=380b17090d67b619a9ee61c0fcea082d8c34530197fe83ba93aeb8a2a8c05797f53786f1cc75ab049c1fe2ce16e4b6b3; gpv_v70=no%20value; pv_templateName=no%20value; gptype_v60=no%20value; smeventssent_16df2784b41e46129645c2417f131191=true; s_sq=%5B%5BB%5D%5D; _derived_epik=dj0yJnU9clpCMEd3MFFrSS0wM3liT1BJTlh3YnRETTdxWU1kTEYmbj1yM2h4OXhSU0NkNVVkd1Fuc2IzM1ZnJm09MSZ0PUFBQUFBR0Z3eWkwJnJtPTEmcnQ9QUFBQUFHRnd5aTA; _uetsid=2bd862f031f211eca60b6bd4a9ca18a0; _uetvid=537e67f0fb6b11eb94c87dc474f63058; stc119288=env:1634781335%7C20211121015535%7C20211021023221%7C9%7C1088072:20221021020221|uid:1633786949435.421259805.32019377.119288.139243673.:20221021020221|srchist:1088072%3A1%3A20211109134229%7C1088071%3A1633896133%3A20211110200213%7C1088072%3A1633896150%3A20211110200230%7C1088071%3A1634302097%3A20211115124817%7C1088072%3A1634302111%3A20211115124831%7C1088071%3A1634426035%3A20211116231355%7C1088072%3A1634768005%3A20211120221325%7C1088071%3A1634781320%3A20211121015520%7C1088072%3A1634781335%3A20211121015535:20221021020221|tsa:0:20211021023221; _spl_pv=32; CSRFtoken=a123be2a3c140013e5aa908c09c3cf38; bm_sv=DE358D50F0EC224DD11133C490BABC21~3Zlm/VVdVBmTHglZFISuGeXNQ9XvBl82WuzqxXqgnrHOt5FZoiNz/lnSL6lr5NKXpnayTzygBY/gdXKbhvBOiHpWnwkxZAQ/TItEybxqBEj0cZzaFTXIntd9ZrJNW/8Jhnv2kfi92F4IuQQqOX6lL3VcNOY5vsumkTUWsV4sGqM=; RT="z=1&dm=nike.com.br&si=fa3d03d6-c0a4-4c80-a5d0-c985eb6a8ab8&ss=kv0al6l4&sl=a&tt=gz9&bcn=%2F%2F173e2508.akstat.io%2F&obo=1"; _gat_nikelaunchga=1; _gat_gtag_UA_142883149_1=1'
-
+    const cookie = 'name=value; Campanha=; Midia=; name=value; nikega=GA1.4.439398858.1633786578; _ga=GA1.3.439398858.1633786578; s_cc=true; __pr.cvh=vqnlvq3jr6; SIZEBAY_SESSION_ID_V4=1643A8ECAD39fd34398a8727414b8dbd7070f1b8331e; _gcl_au=1.1.1205611723.1633786580; user_unic_ac_id=8c322c28-2d50-68bb-1570-292c2acb14c9; advcake_trackid=da96c412-011a-d58c-0e20-587d4bcc474e; _fbp=fb.2.1633786626324.807380073; sb_days=1633786627964; smeventsclear_16df2784b41e46129645c2417f131191=true; AMCVS_F0935E09512D2C270A490D4D%40AdobeOrg=1; chaordic_testGroup=%7B%22experiment%22%3Anull%2C%22group%22%3Anull%2C%22testCode%22%3Anull%2C%22code%22%3Anull%2C%22session%22%3Anull%7D; chaordic_browserId=0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; chaordic_anonymousUserId=anon-0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; blueID=dcfc3510-f641-43ab-9594-9e4b66a89880; _pin_unauth=dWlkPU5HSTFOR0ZrWkRBdE9EVmhPUzAwTkdRNExXRXhZV1l0T0RjMVpHRTFOMll4TTJNMA; __privaci_cookie_consent_uuid=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; __privaci_cookie_consent_generated=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; sback_client=5816989a58791059954e4c52; sback_partner=false; IFCSHOPSESSID=2eo4v268q43arnuiq0qefqui6g; nikega_gid=GA1.4.890475087.1634767673; _gid=GA1.3.1862098394.1634767673; sback_browser=0-79185500-16347680053233f97b3858a1a6a36005293da24fe6abbf9382119942834061709485c154b3-26981300-200170183117,130176164160-1634768005; _cm_ads_activation_retry=false; sback_customer=$2gTyoWRvp2VOVme4FVSq5mTCtWbkRHVUllNxMWVqRFSPF1aBZFTU9mTmFjTNl0Rw8UR6JUS2RlNalHa45kcqlmW2$12; sback_access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhcGkuc2JhY2sudGVjaCIsImlhdCI6MTYzNDc2ODAwNiwiZXhwIjoxNjM0ODU0NDA2LCJhcGkiOiJ2MiIsImRhdGEiOnsiY2xpZW50X2lkIjoiNTgxNjk4OWE1ODc5MTA1OTk1NGU0YzUyIiwiY2xpZW50X2RvbWFpbiI6Im5pa2UuY29tLmJyIiwiY3VzdG9tZXJfaWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhM2YiLCJjdXN0b21lcl9hbm9ueW1vdXMiOnRydWUsImNvbm5lY3Rpb25faWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhNDAiLCJhY2Nlc3NfbGV2ZWwiOiJjdXN0b21lciJ9fQ.aGSlEsESVa0c_SckeM8_CnoD1mOUbS9vr-wC44JvGK4.WrWruyKqzREiuyiYqBqBuy; sback_refresh_wp=no; __privaci_cookie_consents={"consents":{"127":1,"129":1,"130":1,"132":1},"location":"MG#BR","lang":"pt-br"}; sback_cart=6170c8c895223dc131061eac; __udf_j=380b17090d67b619a9ee61c0fcea082d8c34530197fe83ba93aeb8a2a8c05797f53786f1cc75ab049c1fe2ce16e4b6b3; isLogged=true; ak_bmsc=205125A5150B33CEC72191D3938FC086~000000000000000000000000000000~YAAQBNlHaF/akp58AQAATurbog3TQK7HvySf4AbiAesDvGTVFv0d7Ofp0nBFrg9LUDjNfQXqwfRtr3+dBm2z6/4fL4zRLr5/EJl/TBPQNzAFQbpJg7RYsIyjZi/oXRZ58VheTDvNuO7bRpM9enR1woExXlBaL/pTNe1u83Guou2uVJpqLC6e/X3g7qX3alFewB7GvxEsWv+uE+ZEzD6ThlTAVZ7/ZE9mYqA30GbrHN6t6dlsfgZ69vdOjWi6gFTPgGTWM9Sswhy4rFOMetfqiFr+Fr/Byh5MjIXcohXkxZOreudHRCs6CZxQFpIIamzmii5SbfXOWOoDNfSQqK0pRnTP9tJ8COTI+ZWh9wRmy6dIuP8Q6+7Kf7HEpCoe8CPr+k+macPip9K3LfFLdg==; bm_sz=5EEA9FF809AE637AC70136071A2C0E77~YAAQBNlHaGDakp58AQAATurbog1oSCBNZzXMz0oKRELKUJdSYq5EvceJXH/J5v8nvB25KGCQbdhztW6OKt2upbzXHrg7MwUXem5PQ+af+M+a4p2qWc7lIhtGznro/bFGp/ReaDhQy4fNdd9eDYDffYWts6Cjk7M9l+E5ZST0od8kELOr/lPa6Rjm016BF9KYGOxgYQve07sWuiy5hpEG8L1vItwt4Bfu+bhTtSi1RFeQQbys9Xr4y4PG6uAFXAkFsP1XPJv3ArNVDw43ljoHLfmjf49nbCX8H1FY/TQcyBEgmVV/~3159108~3683379; chaordic_session=1634819893901-0.4195558392196248; AMCV_F0935E09512D2C270A490D4D%40AdobeOrg=-1124106680%7CMCIDTS%7C18921%7CMCMID%7C17641837100247587343076244177878306586%7CMCAAMLH-1635424694%7C4%7CMCAAMB-1635424694%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1634827094s%7CNONE%7CvVersion%7C5.2.0; _st_ses=9624306837682208; _sptid=1592; _spcid=1592; _st_cart_script=helper_nike.js; _st_cart_url=/; _st_id=bmV3LmV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSklVekkxTmlKOS5leUpsYldGcGJDSTZJbVJ2WjJSaGNtVmljMEJuYldGcGJDNWpiMjBpZlEubkctX29VdzJJVlZoX1JwREdnR1dneGJBVW4zSmYwMHRBRk93T2hiMVRRdy5XcldydXlLcXpSaVlXckhlaVlIZXpS; sback_customer_w=true; _ce.s=v11slnt~1634822399937; _abck=AEEAD49E7C96598478897A03B3167AA2~0~YAAQJn/NF31nGVV8AQAAChUJowb9NslBqW9WjtAbozZoTSNcYxscC7LQbOhCAZ4x7rnT9wFFM/FYsambEne2NG33IAgXAHmdXxWdWoFooeFE8jo5pTUlGcgHWJpchCtMQpbe069/qySDEsq22u4RSBCEKvwNDm5je+LEo6zQiAGwjkoV/2SMXDwXCnQKqvCiNGFXaJ/vR8XgMezmbt9e5uT7lDD4Iq/iVrDbRBTg3gmD8MQjk7CFUa/r94Mbp5VwDOZz09uqJZhQKSIs9R0UkK87Ft+HMcrCYtjfyB8Tv+PoBhrUygMzJekCZKOiRJeNH6tpDfouDAFmFsYjPASlyoK6Uc8YJPXzfC7UXiLbhv3VQ8klSrsvtnrc37AjvsamZQ9kl7tvMgCXiR1xM+rw2t7BihZl9FIQjGo=~-1~||-1||~-1; lx_sales_channel=%5B%221%22%5D; s_sq=%5B%5BB%5D%5D; _gat_gtag_UA_101374395_1=1; smeventssent_16df2784b41e46129645c2417f131191=true; sback_current_session=1; sback_total_sessions=8; RT="z=1&dm=nike.com.br&si=fa3d03d6-c0a4-4c80-a5d0-c985eb6a8ab8&ss=kv0xjz2f&sl=e&tt=2s7e&bcn=%2F%2F173e252a.akstat.io%2F&obo=2"; gpv_v70=nikecombr%3Ehomepage; pv_templateName=HOME; gptype_v60=homepage; _uetsid=2bd862f031f211eca60b6bd4a9ca18a0; _uetvid=537e67f0fb6b11eb94c87dc474f63058; stc119288=env:1634820182%7C20211121124302%7C20211021141515%7C14%7C1088072:20221021134515|uid:1633786949435.421259805.32019377.119288.139243673.:20221021134515|srchist:1088071%3A1633896133%3A20211110200213%7C1088072%3A1633896150%3A20211110200230%7C1088071%3A1634302097%3A20211115124817%7C1088072%3A1634302111%3A20211115124831%7C1088071%3A1634426035%3A20211116231355%7C1088072%3A1634768005%3A20211120221325%7C1088071%3A1634781320%3A20211121015520%7C1088072%3A1634788732%3A20211121035852%7C1088071%3A1634819894%3A20211121123814%7C1088072%3A1634820182%3A20211121124302:20221021134515|tsa:0:20211021141515; _spl_pv=63; _derived_epik=dj0yJnU9Ump5aXN6WGhhWUVoUUJLeXFWbWprRmphcTZfbGhpTm8mbj1WZWJYZ1RhTDhhaWozOHcyd2ZyY2p3Jm09MSZ0PUFBQUFBR0Z4YnVzJnJtPTEmcnQ9QUFBQUFHRnhidXM; CSRFtoken=aca45fbfc4fe8d29e7424c52bc92a7f2; bm_sv=74223C83455AC9AB62E81CD25145E773~3Zlm/VVdVBmTHglZFISuGSsABhtugH2TiDRp+Ac8yP3YfJYRHyqBVyZR5LAbxVtczWO35BIuwgovCvOCfEgMIDdIYuaEAfpnDT4X9LnCo7V29EFEJjUDUnCBwAROWvGzPyCPvJRpok/bD7KyJ5kKzOUQKW6/1Wg6pSsCmclhyC4='
     //preset product infos
 
     const getPresetProductInfoFn = async () => await executeOrLog(getProductInfo, { cookie, url: executionParams.preset })
@@ -441,30 +442,3 @@ const bot = async () => {
 }
 
 bot()
-// const teste = async () => {
-//     const cookie = 'name=value; Campanha=; Midia=; name=value; nikega=GA1.4.439398858.1633786578; _ga=GA1.3.439398858.1633786578; s_cc=true; __pr.cvh=vqnlvq3jr6; SIZEBAY_SESSION_ID_V4=1643A8ECAD39fd34398a8727414b8dbd7070f1b8331e; _gcl_au=1.1.1205611723.1633786580; user_unic_ac_id=8c322c28-2d50-68bb-1570-292c2acb14c9; advcake_trackid=da96c412-011a-d58c-0e20-587d4bcc474e; _fbp=fb.2.1633786626324.807380073; sb_days=1633786627964; smeventsclear_16df2784b41e46129645c2417f131191=true; AMCVS_F0935E09512D2C270A490D4D%40AdobeOrg=1; chaordic_testGroup=%7B%22experiment%22%3Anull%2C%22group%22%3Anull%2C%22testCode%22%3Anull%2C%22code%22%3Anull%2C%22session%22%3Anull%7D; chaordic_browserId=0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; chaordic_anonymousUserId=anon-0-wDHuHy0431YKd4aWk1TGs3IvqI4TngZzWE1_16337869484713722; blueID=dcfc3510-f641-43ab-9594-9e4b66a89880; _pin_unauth=dWlkPU5HSTFOR0ZrWkRBdE9EVmhPUzAwTkdRNExXRXhZV1l0T0RjMVpHRTFOMll4TTJNMA; __privaci_cookie_consent_uuid=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; __privaci_cookie_consent_generated=e3109125-3321-4ddc-b10a-79c30dc1e98f:2; sback_client=5816989a58791059954e4c52; sback_partner=false; IFCSHOPSESSID=2eo4v268q43arnuiq0qefqui6g; nikega_gid=GA1.4.890475087.1634767673; _gid=GA1.3.1862098394.1634767673; sback_browser=0-79185500-16347680053233f97b3858a1a6a36005293da24fe6abbf9382119942834061709485c154b3-26981300-200170183117,130176164160-1634768005; _cm_ads_activation_retry=false; sback_customer=$2gTyoWRvp2VOVme4FVSq5mTCtWbkRHVUllNxMWVqRFSPF1aBZFTU9mTmFjTNl0Rw8UR6JUS2RlNalHa45kcqlmW2$12; sback_access_token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhcGkuc2JhY2sudGVjaCIsImlhdCI6MTYzNDc2ODAwNiwiZXhwIjoxNjM0ODU0NDA2LCJhcGkiOiJ2MiIsImRhdGEiOnsiY2xpZW50X2lkIjoiNTgxNjk4OWE1ODc5MTA1OTk1NGU0YzUyIiwiY2xpZW50X2RvbWFpbiI6Im5pa2UuY29tLmJyIiwiY3VzdG9tZXJfaWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhM2YiLCJjdXN0b21lcl9hbm9ueW1vdXMiOnRydWUsImNvbm5lY3Rpb25faWQiOiI2MTYzNDZkN2E1NTlkNTU1YzgzMmVhNDAiLCJhY2Nlc3NfbGV2ZWwiOiJjdXN0b21lciJ9fQ.aGSlEsESVa0c_SckeM8_CnoD1mOUbS9vr-wC44JvGK4.WrWruyKqzREiuyiYqBqBuy; sback_customer_w=true; sback_refresh_wp=no; ak_bmsc=33AA6836C13382A6850CBCE3D67D18B1~000000000000000000000000000000~YAAQBNlHaOgYhZ58AQAAOlCPoA1cLS1tgJ5o+sQuQRuGwrC1b8K8Zfm8lqi5YuLhf+3y1Qd15VaXwOl/7yJfZ1LBk+6Gx1eG0CzcSyKHnkCidi9aJ2HJnBQVr3EWf8wPL2LpAxj6sezzmBSgu/f3LkMuns/Wj556FMJgq1jXS8w6I/eEAYoypc9evDnkP4RWNOCO8VGrCC3HqKBagxVCw6sgcnljPzwf0D4CHL5yi49GzDFDxPwbmVEYnzQP2+mVmPB9SwpeIbBeDF1YBGjfuoNQJwbhQj1adDPKsThw0PkMcb7dTBoIVbCmAkjTKH7l2p81x/IzunNunGD7XsT/Khj/gQv74hMBy9J1ISdtUsVVln5aFWZAoyc6eEd+VFj/gjd25pWs69qn2/Wm; bm_sz=09CAE9628D5D521C7E55442B06F5ACA0~YAAQBNlHaOkYhZ58AQAAO1CPoA1lxQm/jYougQWuXGd8EuUSlqvUnzoGIV01aThjrhyGssGhB3btP7VZoxAmH4hNOsope33PLjX3h/wIFVBXUUVWnGmmXjpcGCoHbti7fkeFl/oyGlY7VxJaHuPZPpjChuIoUR1jbj44iwrj3s7r36SHwHemQjQXRSl/tn0FM+LNzjPClh/AqkdlKVJjGny8qlCrQdCzQGHkmBNvnCgi5JfLn8vvd/QLpflvXJIVCUaxieeNLJy8gBASg/VFEn1peeaTWdf7IFxxItKNFMvnZkYUc4OdVPoQlmkLXdaHcuWjVlAhTyymxwCD~3163440~4474165; chaordic_session=1634781319845-0.11161234999374758; AMCV_F0935E09512D2C270A490D4D%40AdobeOrg=-1124106680%7CMCIDTS%7C18921%7CMCMID%7C17641837100247587343076244177878306586%7CMCAAMLH-1635386120%7C4%7CMCAAMB-1635386120%7CRKhpRz8krg2tLO6pguXWp5olkAcUniQYPHaMWWgdJ3xzPWQmdj0y%7CMCOPTOUT-1634788520s%7CNONE%7CvVersion%7C5.2.0; _st_ses=923380525497703; _sptid=1592; _spcid=1592; _st_cart_script=helper_nike.js; _st_cart_url=/; _st_id=bmV3LmV5SjBlWEFpT2lKS1YxUWlMQ0poYkdjaU9pSklVekkxTmlKOS5leUpsYldGcGJDSTZJbVJ2WjJSaGNtVmljMEJuYldGcGJDNWpiMjBpZlEuM1hTNVlmV29Rb0NDWkpuZFZiQ1JUX2NRVWFMOUVMQ0JJdG5jSi1GdU8zNC5XcldydXlLcXpSRWlpWVdyS3FnUFdy; sback_current_session=1; sback_total_sessions=5; smeventssent_16df2784b41e46129645c2417f131191=true; isLogged=1; isLogged=true; _abck=AEEAD49E7C96598478897A03B3167AA2~0~YAAQBNlHaK8bhZ58AQAAyryPoAYVaYmv/X/6OgX10L1vr9/AOXSbmDhAgiRnlzpXdOiJnArz9qac08j7mFEqmVHCKZ+vXcIv7ol4Iq4X4gASUUaQ39YQ1mzEuOA4ibjFxWF5lZSkKNPerN7SRErwuKEUsZA0ExzL+jBwd3U5l4En78224T6h0suebG71Adhs2EK3zljNkggE89HHksP7boEhXzuIBpep/LMfEj9tOEel/O+Bpc4KLjm+ipm+34XHE6AAWGIjVtc0ySOgUSsXJ7L9PjogR6f+kYWRbqLBQ0qj9Rq+VawiuUK7WgbGE5PV42+XDNl5psO2AijmeiD3haMbVlpDSdyAFZBd6nJELjqN1yhTWsaErbbrnll+4VVpPlxooBVR0QRSRA5RwqnaatMSLFDJUw==~-1~-1~-1; __privaci_cookie_consents={"consents":{"127":1,"129":1,"130":1,"132":1},"location":"MG#BR","lang":"pt-br"}; chaordic_realUserId=4136319; lx_sales_channel=%5B%222%22%5D; _gat_nikelaunchga=1; _gat_gtag_UA_142883149_1=1; s_sq=%5B%5BB%5D%5D; _derived_epik=dj0yJnU9T3FTR2Zyako1clZjUXowNE5hbXM2ZERtSDF6Mjl1bVUmbj1iZFFLM3ZGZl9xd25CNnBHbDR0OFdnJm09MSZ0PUFBQUFBR0Z3eU1jJnJtPTEmcnQ9QUFBQUFHRnd5TWM; _gat_gtag_UA_101374395_1=1; _uetsid=2bd862f031f211eca60b6bd4a9ca18a0; _uetvid=537e67f0fb6b11eb94c87dc474f63058; _spl_pv=28; stc119288=env:1634781335%7C20211121015535%7C20211021022623%7C5%7C1088072:20221021015623|uid:1633786949435.421259805.32019377.119288.139243673.:20221021015623|srchist:1088072%3A1%3A20211109134229%7C1088071%3A1633896133%3A20211110200213%7C1088072%3A1633896150%3A20211110200230%7C1088071%3A1634302097%3A20211115124817%7C1088072%3A1634302111%3A20211115124831%7C1088071%3A1634426035%3A20211116231355%7C1088072%3A1634768005%3A20211120221325%7C1088071%3A1634781320%3A20211121015520%7C1088072%3A1634781335%3A20211121015535:20221021015623|tsa:0:20211021022623; sback_cart=6170c8c895223dc131061eac; CSRFtoken=822be366f73742fe16acb87ffe463638; bm_sv=DE358D50F0EC224DD11133C490BABC21~3Zlm/VVdVBmTHglZFISuGeXNQ9XvBl82WuzqxXqgnrHOt5FZoiNz/lnSL6lr5NKXpnayTzygBY/gdXKbhvBOiHpWnwkxZAQ/TItEybxqBEjXye64Pb7WxR7SpzLbhJMPH0+OG56icxfy8F2sfFslOq9h6zEvqKVOOeS9cJ5RbwM=; RT="z=1&dm=nike.com.br&si=fa3d03d6-c0a4-4c80-a5d0-c985eb6a8ab8&ss=kv0al6l4&sl=6&tt=atm&bcn=%2F%2F173e2508.akstat.io%2F"; gpv_v70=nikecombr%3Echeckout%3Eaddress; pv_templateName=CHECKOUT; gptype_v60=checkout%3Aaddress'
-//     const headers = {
-//         cookie,
-//         'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-//         origin: 'https://www.nike.com.br',
-//     }
-//     const response = await axios({
-//         method: 'post',
-//         url: 'https://www.nike.com.br/checkout',
-//         headers,
-//     })
-//     const inputCepRegex = `<input type="hidden" id="calcularFreteCallback"(.*?)>`
-//     const valorCepRegex = `value="(.*?)"`
-//     const [inputCepRegexResult] = response.data.match(inputCepRegex)
-//     const [ignore, cep] = inputCepRegexResult.match(valorCepRegex)
-
-//     const inputAddressIdRegex = `<input type="hidden" id="user-shipping-address-id"(.*?)>`
-//     const valorAddressIdRegex = `value="(.*?)"`
-//     const [inputAddressIdRegexResult] = response.data.match(inputAddressIdRegex)
-//     const [ignoreToo, addresId] = inputAddressIdRegexResult.match(valorAddressIdRegex)
-//     console.log(cep, addresId)
-
-
-// }
-
-// teste()

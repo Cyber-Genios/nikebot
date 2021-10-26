@@ -10,7 +10,6 @@
     "axios": "^0.21.1",
     "fs": "^0.0.1-security",
     "fs-extra": "^10.0.0",
-    "puppeteer": "^10.2.0",
     "readline-sync": "^1.4.10"
   }
 }

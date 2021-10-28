@@ -3,12 +3,12 @@ const readlineSync = require('readline-sync')
 
 const executionParams = {
     date: '2021-10-26 10:00:00',
-    presetDate: '2021-10-26 09:51:00',
+    presetDate: '2021-10-26 09:40:00',
     preset: 'https://www.nike.com.br/tenis-nike-pegasus-trail-3-masculino-153-169-224-324706?gridPosition=G1',
-    product: 'https://www.nike.com.br/sb-dunk-high-pro-513-514-515-222656',
+    product: 'https://www.nike.com.br/sb-dunk-low-513-514-515-367682',
     presetNumber: 38,
-    productNumber: 43,
-    phoneNumber: '34992291965',
+    productNumber: 42,
+    phoneNumber: '34492291965',
     waitForSelector: {
         visible: true,
         timeout: 7500

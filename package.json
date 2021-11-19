@@ -8,6 +8,7 @@
   },
   "dependencies": {
     "axios": "^0.21.1",
+    "cli-color": "^2.0.1",
     "fs": "^0.0.1-security",
     "fs-extra": "^10.0.0",
     "readline-sync": "^1.4.10"

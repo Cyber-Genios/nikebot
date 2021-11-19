@@ -15,7 +15,7 @@ const createOrAppend = async (obj) => {
   const fileExists = fsExtra.existsSync(fileName);
 
   if (!fileExists) {
-    fsExtra.writeFileSync(fileName, '');
+    fsExtra.writeFileSync(fileName, "");
   }
 
   const message = JSON.stringify(obj);
@@ -586,21 +586,21 @@ const bot = async () => {
     "Adicionar produto no carrinho"
   );
 
-  // bough product
-  //   const buyProductFn = async () =>
-  //     await executeOrLog(
-  //       buyProduct,
-  //       {
-  //         cookie,
-  //         cardInformations,
-  //         deliveryInformations,
-  //       },
-  //       null,
-  //       "Comprar produto"
-  //     );
+  //   bough product
+  const buyProductFn = async () =>
+    await executeOrLog(
+      buyProduct,
+      {
+        cookie,
+        cardInformations,
+        deliveryInformations,
+      },
+      null,
+      "Comprar produto"
+    );
 
-  //   await infineRetry(buyProductFn, {}, 5000, "Comprar produto");
-  //   return;
+  await infineRetry(buyProductFn, {}, 5000, "Comprar produto");
+  return;
 };
 
 bot();

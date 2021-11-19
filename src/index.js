@@ -12,14 +12,18 @@ const success = cli.green.bold;
 
 const createOrAppend = async (obj) => {
   const fileName = `${executionParams.email}.txt`;
-  const fileExists = fsExtra.ensureFileSync(fileName);
+  const fileExists = fsExtra.existsSync(fileName);
 
   if (!fileExists) {
-    fsExtra.writeFileSync(fileName);
+    fsExtra.writeFileSync(fileName, '');
   }
 
+  const message = JSON.stringify(obj);
+
   fs.appendFileSync(fileName, "===================");
-  fs.appendFileSync(fileName, obj);
+  fs.appendFileSync(fileName, "\r\n");
+  fs.appendFileSync(fileName, message);
+  fs.appendFileSync(fileName, "\r\n");
 };
 
 const timeTo = (date) => {
@@ -61,7 +65,6 @@ const infineRetry = async (func, params = {}, timeoutRetry = 0, funcName) => {
     try {
       return await func(params);
     } catch (e) {
-      createOrAppend(e);
       success = false;
       timeoutRetry
         ? await schedule(
@@ -77,6 +80,7 @@ const executeOrLog = async (func, params, _finnaly, funcName) => {
   try {
     return await func(params);
   } catch (e) {
+    createOrAppend(e);
     console.log(error("Erro ao executar função:"), warn(funcName));
     throw Error();
   } finally {
